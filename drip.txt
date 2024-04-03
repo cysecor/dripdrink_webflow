@@ -1,0 +1,346 @@
+var map;
+var markers = [];
+
+function initMap() {
+  let mapStyles = [
+    {
+        "featureType": "all",
+        "elementType": "labels.text.fill",
+        "stylers": [
+            {
+                "saturation": 36
+            },
+            {
+                "color": "#000000"
+            },
+            {
+                "lightness": 40
+            }
+        ]
+    },
+    {
+        "featureType": "all",
+        "elementType": "labels.text.stroke",
+        "stylers": [
+            {
+                "visibility": "on"
+            },
+            {
+                "color": "#000000"
+            },
+            {
+                "lightness": 16
+            }
+        ]
+    },
+    {
+        "featureType": "all",
+        "elementType": "labels.icon",
+        "stylers": [
+            {
+                "visibility": "off"
+            }
+        ]
+    },
+    {
+        "featureType": "administrative",
+        "elementType": "geometry.fill",
+        "stylers": [
+            {
+                "color": "#000000"
+            },
+            {
+                "lightness": 20
+            }
+        ]
+    },
+    {
+        "featureType": "administrative",
+        "elementType": "geometry.stroke",
+        "stylers": [
+            {
+                "color": "#000000"
+            },
+            {
+                "lightness": 17
+            },
+            {
+                "weight": 1.2
+            }
+        ]
+    },
+    {
+        "featureType": "landscape",
+        "elementType": "geometry",
+        "stylers": [
+            {
+                "color": "#000000"
+            },
+            {
+                "lightness": 20
+            }
+        ]
+    },
+    {
+        "featureType": "poi",
+        "elementType": "geometry",
+        "stylers": [
+            {
+                "color": "#000000"
+            },
+            {
+                "lightness": 21
+            }
+        ]
+    },
+    {
+        "featureType": "road.highway",
+        "elementType": "geometry.fill",
+        "stylers": [
+            {
+                "color": "#000000"
+            },
+            {
+                "lightness": 17
+            }
+        ]
+    },
+    {
+        "featureType": "road.highway",
+        "elementType": "geometry.stroke",
+        "stylers": [
+            {
+                "color": "#000000"
+            },
+            {
+                "lightness": 29
+            },
+            {
+                "weight": 0.2
+            }
+        ]
+    },
+    {
+        "featureType": "road.arterial",
+        "elementType": "geometry",
+        "stylers": [
+            {
+                "color": "#000000"
+            },
+            {
+                "lightness": 18
+            }
+        ]
+    },
+    {
+        "featureType": "road.local",
+        "elementType": "geometry",
+        "stylers": [
+            {
+                "color": "#000000"
+            },
+            {
+                "lightness": 16
+            }
+        ]
+    },
+    {
+        "featureType": "transit",
+        "elementType": "geometry",
+        "stylers": [
+            {
+                "color": "#000000"
+            },
+            {
+                "lightness": 19
+            }
+        ]
+    },
+    {
+        "featureType": "water",
+        "elementType": "geometry",
+        "stylers": [
+            {
+                "color": "#000000"
+            },
+            {
+                "lightness": 17
+            }
+        ]
+    }
+];
+        // Default location (Belgrade, Serbia)
+    var defaultLocation = {lat: 44.8117646, lng: 20.4677565};
+    map = new google.maps.Map(document.getElementById('dripMap'), {
+        zoom: 15,
+        center: defaultLocation,
+        styles: mapStyles
+    });
+
+    google.maps.event.addListener(map, 'bounds_changed', updateVisiblePinsList);
+
+    var locations = generateRandomLocations(); // Use predefined locations
+    locations.forEach(function(location) {
+        addMarker(location);
+    });
+
+        // Try HTML5 geolocation
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                var userLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+
+                map.setCenter(userLocation);
+
+                // Add a marker at the user's location
+                new google.maps.Marker({
+                    position: userLocation,
+                    map: map,
+                    title: 'Your Location'
+                });
+            }, function() {
+                handleLocationError(true, map.getCenter());
+            });
+        } else {
+            // Browser doesn't support Geolocation
+            handleLocationError(false, map.getCenter());
+        }
+        
+        
+        // Create the search box and link it to the input field.
+    var input = document.getElementById('place-search');
+    var searchBox = new google.maps.places.SearchBox(input);
+    map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+
+    // Bias the SearchBox results towards current map's viewport.
+    map.addListener('bounds_changed', function() {
+        searchBox.setBounds(map.getBounds());
+    });
+
+    var infowindow = new google.maps.InfoWindow();
+    var infowindowContent = document.createElement('div');
+    infowindow.setContent(infowindowContent);
+
+
+
+// Novi kod
+searchBox.addListener('places_changed', function() {
+    var places = searchBox.getPlaces();
+
+    if (places.length == 0) {
+        return;
+    }
+
+    // Define bounds object to fit all places found
+    var bounds = new google.maps.LatLngBounds();
+
+    // Loop through all places found and extend the bounds to include each place's location
+    places.forEach(function(place) {
+        if (!place.geometry) {
+            console.log("Returned place contains no geometry");
+            return;
+        }
+
+        if (place.geometry.viewport) {
+            // Only geocodes have viewport, use it to define the bounds if available
+            bounds.union(place.geometry.viewport);
+        } else {
+            // For other types of results, use location to extend the bounds
+            bounds.extend(place.geometry.location);
+        }
+    });
+
+    // Adjust the map's viewport to fit the bounds of all places found
+    map.fitBounds(bounds);
+
+// Once the map has adjusted to the new bounds, set the zoom level to 15
+    // Remove the listener immediately after adjusting zoom to avoid unintended zoom changes later
+    var listener = map.addListener('idle', function() {
+        map.setZoom(10); // Set the zoom level to 10
+        google.maps.event.removeListener(listener); // Remove this listener
+    });
+  });
+        
+}
+    
+    
+    
+    
+// Function to generate random locations
+function generateRandomLocations(numberOfLocations) {
+    var locations = [];
+   
+    var lat = 44.81019604637908; 
+    var lng = 20.465876443372203;
+    locations.push({
+      coords: {lat: lat, lng: lng},
+      label: '<b>Maxi 504</b> Kneza Milosa 2',
+      iconImage: 'https://uploads-ssl.webflow.com/62d7d3a85f7241c26362d7b0/6606db9e48217e9396431427_pin.png',
+      content: '<h2>Maxi 504</h2><p>Kneza Milosa 2</p>' // Example content
+    });
+    
+    lat = 44.80839380289348; 
+    lng = 20.46905415331236;
+    locations.push({
+      coords: {lat: lat, lng: lng},
+      label: '<b>NELT BEOGRAD</b> Bulevar Kralja Aleksandra 44',
+      iconImage: 'https://uploads-ssl.webflow.com/62d7d3a85f7241c26362d7b0/6606db9e48217e9396431427_pin.png',
+      content: '<h2>NELT BEOGRAD</h2><p>Bulevar Kralja Aleksandra 44</p>' // Example content
+    });
+    
+    
+    lat = 44.81314334169058; 
+    lng = 20.482203407386102;
+    locations.push({
+      coords: {lat: lat, lng: lng},
+      label: '<b>Trafika</b> Zdravka Čelara 12',
+      iconImage: 'https://uploads-ssl.webflow.com/62d7d3a85f7241c26362d7b0/6606db9e48217e9396431427_pin.png',
+      content: '<h2>Trafika</h2><p>Zdravka Čelara 12</p>' // Example content
+    });
+    
+    return locations;
+}
+        
+        
+function addMarker(props) {
+    var marker = new google.maps.Marker({
+        position: props.coords,
+        map: map,
+        icon: props.iconImage,
+    });
+
+    // Store the marker and the label in an object
+    var markerData = {
+        marker: marker,
+        label: props.content, // Assuming 'content' holds the address or description
+    };
+
+    if (props.content) {
+        var infoWindow = new google.maps.InfoWindow({
+            content: props.content
+        });
+
+        marker.addListener('click', function() {
+            infoWindow.open(map, marker);
+        });
+    }
+
+    markers.push(markerData); // Push the object to the markers array
+}
+
+function updateVisiblePinsList() {
+    var bounds = map.getBounds();
+    var visibleLabels = markers
+        .filter(markerData => bounds.contains(markerData.marker.getPosition()))
+        .map(markerData => markerData.label); // Access the label from the stored object
+    var listHtml = visibleLabels.map(label => `<li>${label}</li>`).join('');
+    document.getElementById('pinList').innerHTML = `<ul>${listHtml}</ul>`;
+}
+
+function handleLocationError(browserHasGeolocation, pos) {
+    console.log(browserHasGeolocation ?
+                'Error: The Geolocation service failed.' :
+                'Error: Your browser doesn\'t support geolocation.');
+}
